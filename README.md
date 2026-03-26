@@ -1,47 +1,49 @@
-# Offline Contract Management Tracker Dashboard
+# Contract Management Tracker - Offline Browser App
 
-A fully offline Windows-friendly desktop app for contract management that reads directly from an Excel workbook (`.xlsx`) as the single source of truth.
+This project is now a **single offline web app** that runs by opening `index.html` directly in a browser (no install, no localhost, no server, no PHP/MySQL/XAMPP).
 
-## What this app does
+## What you get
 
-- Runs locally with **no web server, no cloud, no database server, no internet requirement**.
-- Reads contracts from Excel sheet **`contracts_filtered`**.
-- Optionally reads variation orders from sheet **`variation_orders`**.
-- Auto-detects Excel changes (file modified + saved) and reloads data automatically.
-- Provides:
-  - Dashboard KPIs
-  - Charts
-  - Contract register with search/sort/filter
-  - Contract detail pop-up
-  - Expiry tracker
-  - Extension tracker
-  - Variation orders tracker
-  - Summary/alerts page
-  - CSV export + printable text summary export
+- ✅ Fully offline app (local files only)
+- ✅ Opens directly in browser from folder
+- ✅ Reads Excel workbook (`.xlsx`) from your PC
+- ✅ Uses sheet `contracts_filtered` as source of truth
+- ✅ Auto-refreshes when the Excel file is edited and saved
+- ✅ Dashboard with KPI cards + charts
+- ✅ Register with search, sorting, filtering, row numbering
+- ✅ Contract detail popup
+- ✅ Expiry tracker, extension tracker, variation orders tracker
+- ✅ CSV export and print support
+- ✅ No online CDN or internet dependency
 
-## Folder structure
+## Files
 
 ```text
 Contract-Tracker/
-├─ app/
-│  ├─ __init__.py
-│  ├─ main.py                # Desktop UI and pages
-│  ├─ config.py              # Config load/save
-│  ├─ data_loader.py         # Excel reader + schema handling
-│  └─ calculations.py        # Derived fields, KPIs, validations
-├─ data/
-│  └─ contracts.xlsx         # Put your live workbook here (or set path in config)
-├─ config.json               # Local app configuration
-├─ requirements.txt
-└─ README.md
+├─ index.html          # Main app UI
+├─ styles.css          # Styling
+├─ app.js              # Dashboard/filter/table logic
+├─ xlsx-lite.js        # Built-in XLSX parser (no external library)
+├─ README.md
+└─ .gitignore
 ```
 
-## Excel requirements
+## How to run (Windows)
 
-Main sheet name: `contracts_filtered`
+1. Put your Excel file anywhere on your PC.
+2. Open `index.html` in **Microsoft Edge** or **Google Chrome**.
+3. Click **Open Excel File** and choose your workbook.
+4. The app loads sheet `contracts_filtered`.
+5. If workbook has a `variation_orders` sheet, VO module loads automatically.
+6. Keep the app open; when Excel is saved, app auto-refreshes every 5 seconds.
 
-Expected existing fields:
+> Recommended browser: latest Edge/Chrome (for File System Access API and auto-refresh).
 
+## Required sheet and columns
+
+Sheet: `contracts_filtered`
+
+Columns expected:
 - contractKey
 - businessUnit
 - madeBy
@@ -63,9 +65,7 @@ Expected existing fields:
 - revisedExpiryDateObj
 - revisedExpiryWithVOObj
 
-Optional future sheet for variation orders: `variation_orders`
-
-Recommended VO columns:
+Optional VO sheet: `variation_orders`
 - contractKey
 - voNumber
 - voDate
@@ -73,65 +73,8 @@ Recommended VO columns:
 - voAmount
 - voStatus
 
-## Automatic calculations included
+## Important note about browser security
 
-- Duration from commencement to original expiry
-- Revised duration to effective expiry
-- Days remaining
-- Status: Active / Expired / Expiring Soon / Draft
-- Expiring flags (30 / 60 / 90)
-- Base value
-- VO count and total VO value
-- Final revised value (base + VO)
-- Missing key data flag
-- Date consistency warning (expiry before commencement)
+Browser apps cannot silently open local files without your permission.
+So you select the workbook once using **Open Excel File**. After that, this app can automatically detect file changes and refresh while it remains open.
 
-## Setup (Windows)
-
-1. Install Python 3.11+.
-2. Open terminal in this project folder.
-3. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-4. Put your workbook at `data/contracts.xlsx` (or use **Browse** in app to select your file).
-5. Run:
-
-```bash
-python -m app.main
-```
-
-## Configuration
-
-Edit `config.json` to set:
-
-- `excel_path`: path to workbook
-- `main_sheet`: contracts sheet name
-- `variation_orders_sheet`: VO sheet name
-- `auto_refresh_seconds`: polling interval
-
-## Notes for non-technical users
-
-- Keep Excel file closed while editing if a save conflict appears.
-- Save Excel after updates; app refreshes automatically within configured seconds.
-- Use **Refresh** button for immediate reload.
-
-## Future enhancements (ready structure)
-
-You can add new columns and sheets without major rewrite:
-- Extend expected schema in `data_loader.py`
-- Add derived calculations in `calculations.py`
-- Add new tabs/views in `main.py`
-
-## Packaging as `.exe` (optional)
-
-You can package into a single Windows executable with PyInstaller:
-
-```bash
-pip install pyinstaller
-pyinstaller --noconfirm --windowed --name ContractTracker app/main.py
-```
-
-The generated `dist/ContractTracker` folder can be copied to another PC.
