@@ -1,0 +1,7 @@
+{
+  "excel_path": "./data/contracts.xlsx",
+  "main_sheet": "contracts_filtered",
+  "variation_orders_sheet": "variation_orders",
+  "auto_refresh_seconds": 5,
+  "expiring_thresholds": [30, 60, 90]
+}
