@@ -8,7 +8,14 @@ const REQUIRED_COLUMNS = ['contractKey','businessUnit','madeBy','contractType','
 const EDITABLE_FIELDS = ['referenceNumber','businessUnit','madeBy','contractType','description','contractorName','poNumber','signingDateObj','commencementDateObj','expiryDateObj','revisedExpiryDateObj','revisedExpiryWithVOObj','extensionCount','extensionDates','baseValue'];
 const $ = (id) => document.getElementById(id);
 const fmtMoney = (v) => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtDate = (d) => d instanceof Date && !isNaN(d) ? d.toISOString().slice(0, 10) : '';
+const fmtDate = (d) => {
+  if (!(d instanceof Date) || isNaN(d)) return '';
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mmm = d.toLocaleString('en-US', { month: 'short' });
+  const yyyy = d.getFullYear();
+  return `${dd}-${mmm}-${yyyy}`;
+};
+const fmtInputDate = (d) => d instanceof Date && !isNaN(d) ? d.toISOString().slice(0, 10) : '';
 const contractRef = (r) => String(r.referenceNumber || r.contractKey || '').trim();
 
 function parseDate(value) {
@@ -323,7 +330,7 @@ function openEditor(ref = null) {
     const el = form.elements[f];
     if (!el) return;
     const v = row ? row[f] : '';
-    el.value = el.type === 'date' ? fmtDate(parseDate(v)) : (v ?? '');
+    el.value = el.type === 'date' ? fmtInputDate(parseDate(v)) : (v ?? '');
   });
   $('deleteContractBtn').style.display = row ? 'inline-block' : 'none';
   $('editorDialog').showModal();
