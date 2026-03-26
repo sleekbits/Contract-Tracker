@@ -42,7 +42,7 @@ function toStatus(row) {
 function enrich(contracts, vos) {
   const voMap = new Map();
   vos.forEach(vo => {
-    const key = String(vo.contractKey || vo.referenceNumber || '').trim();
+    const key = String(vo.referenceNumber || vo.contractKey || '').trim();
     const arr = voMap.get(key) || [];
     arr.push({ ...vo, voAmount: parseNumber(vo.voAmount), voDateObj: parseDate(vo.voDate) });
     voMap.set(key, arr);
@@ -164,7 +164,7 @@ function renderTables() {
   ], state.filtered.filter(r=>r.hasVO));
 
   $('voTable').innerHTML = tableHtml([
-    { key:'contractKey', label:'Contract Reference Number' }, { key:'voNumber', label:'VO Number' },
+    { key:'referenceNumber', label:'Contract Reference Number', render:r=>String(r.referenceNumber || r.contractKey || '') }, { key:'voNumber', label:'VO Number' },
     { key:'voDate', label:'VO Date', render:r=>fmtDate(parseDate(r.voDate)) }, { key:'voDescription', label:'Description' },
     { key:'voAmount', label:'Amount', render:r=>fmtMoney(parseNumber(r.voAmount)) }, { key:'voStatus', label:'Status' },
   ], state.variationOrders);
@@ -199,7 +199,7 @@ function renderAll() {
 }
 
 function showDetail(r) {
-  const voRows = state.variationOrders.filter(v => String(v.contractKey || '').trim() === r.referenceNumber);
+  const voRows = state.variationOrders.filter(v => String(v.referenceNumber || v.contractKey || '').trim() === r.referenceNumber);
   $('detailBody').textContent = [
     `Contract Reference Number: ${r.referenceNumber}`,
     `Description: ${r.description || ''}`,
@@ -261,10 +261,11 @@ async function loadFromFile(file) {
   if (missing.length) state.warnings.push(`Missing columns in contracts_filtered: ${missing.join(', ')}`);
 
   const contracts = rawContracts.map(r => ({ ...Object.fromEntries(REQUIRED_COLUMNS.map(c => [c, r[c] ?? ''])), ...r }));
-  const enriched = enrich(contracts, vos);
+  const normalizedVos = vos.map(v => ({ ...v, referenceNumber: String(v.referenceNumber || v.contractKey || '').trim(), contractKey: String(v.referenceNumber || v.contractKey || '').trim() }));
+  const enriched = enrich(contracts, normalizedVos);
   state.contracts = enriched.rows;
   state.filtered = [...state.contracts];
-  state.variationOrders = vos;
+  state.variationOrders = normalizedVos;
   state.warnings.push(...enriched.warnings.slice(0, 50));
   renderFilters();
   renderAll();
@@ -307,7 +308,8 @@ async function saveWorkbook() {
   });
 
   const voRows = state.variationOrders.map(v => ({
-    contractKey: String(v.contractKey || v.referenceNumber || ''),
+    referenceNumber: String(v.referenceNumber || v.contractKey || ''),
+    contractKey: String(v.referenceNumber || v.contractKey || ''),
     voNumber: v.voNumber || '', voDate: fmtDate(parseDate(v.voDate)), voDescription: v.voDescription || '',
     voAmount: parseNumber(v.voAmount), voStatus: v.voStatus || '',
   }));
@@ -362,7 +364,7 @@ function deleteCurrentContract() {
   if (!state.selectedRef) return;
   if (!confirm('Delete this contract?')) return;
   state.contracts = state.contracts.filter(r => r.referenceNumber !== state.selectedRef);
-  state.variationOrders = state.variationOrders.filter(v => String(v.contractKey || '').trim() !== state.selectedRef);
+  state.variationOrders = state.variationOrders.filter(v => String(v.referenceNumber || v.contractKey || '').trim() !== state.selectedRef);
   state.contracts = enrich(state.contracts, state.variationOrders).rows;
   applyFilters();
   $('editorDialog').close();

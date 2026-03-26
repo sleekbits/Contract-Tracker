@@ -40,7 +40,7 @@ Expected fields:
 
 Optional sheet:
 `variation_orders` with columns:
-`contractKey, voNumber, voDate, voDescription, voAmount, voStatus`
+`referenceNumber (preferred) or contractKey, voNumber, voDate, voDescription, voAmount, voStatus`
 
 ## Note
 
