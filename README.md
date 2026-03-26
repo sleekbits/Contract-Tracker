@@ -1,80 +1,47 @@
 # Contract Management Tracker - Offline Browser App
 
-This project is now a **single offline web app** that runs by opening `index.html` directly in a browser (no install, no localhost, no server, no PHP/MySQL/XAMPP).
+Single-folder offline web app. Open `index.html` in Edge/Chrome and manage contracts directly from Excel.
 
-## What you get
+## Key capabilities
 
-- ✅ Fully offline app (local files only)
-- ✅ Opens directly in browser from folder
-- ✅ Reads Excel workbook (`.xlsx`) from your PC
-- ✅ Uses sheet `contracts_filtered` as source of truth
-- ✅ Auto-refreshes when the Excel file is edited and saved
-- ✅ Dashboard with KPI cards + charts
-- ✅ Register with search, sorting, filtering, row numbering
-- ✅ Contract detail popup
-- ✅ Expiry tracker, extension tracker, variation orders tracker
-- ✅ CSV export and print support
-- ✅ No online CDN or internet dependency
+- Open local `.xlsx` directly from browser (no server / no install / no internet)
+- Read from `contracts_filtered` sheet as source of truth
+- Auto-refresh on external Excel save (5-second polling)
+- Dashboard KPIs + trend charts
+- Contract register with search, filters, sorting, row numbering
+- Color status badges (Active / Expired / Expiring Soon / Draft)
+- Contract detail popup
+- **Add / Edit / Delete contract from the UI**
+- **Save changes back to the same Excel file from UI**
+- Expiry / Extension / Variation Order trackers
+- CSV export and print view
 
 ## Files
 
-```text
-Contract-Tracker/
-├─ index.html          # Main app UI
-├─ styles.css          # Styling
-├─ app.js              # Dashboard/filter/table logic
-├─ xlsx-lite.js        # Built-in XLSX parser (no external library)
-├─ README.md
-└─ .gitignore
-```
+- `index.html` – layout/pages/dialogs
+- `styles.css` – modern colorful UX/UI theme
+- `app.js` – app logic, calculations, edit workflow, save to workbook
+- `xlsx-lite.js` – local XLSX read/write implementation (no CDN)
 
-## How to run (Windows)
+## Run
 
-1. Put your Excel file anywhere on your PC.
-2. Open `index.html` in **Microsoft Edge** or **Google Chrome**.
-3. Click **Open Excel File** and choose your workbook.
-4. The app loads sheet `contracts_filtered`.
-5. If workbook has a `variation_orders` sheet, VO module loads automatically.
-6. Keep the app open; when Excel is saved, app auto-refreshes every 5 seconds.
+1. Open `index.html` in latest **Edge** or **Chrome**.
+2. Click **Open Excel File** and choose workbook.
+3. Use dashboard and register.
+4. Use **+ Add Contract** or **Edit** button in register.
+5. Click **Save Changes to Excel** to persist edits to workbook.
 
-> Recommended browser: latest Edge/Chrome (for File System Access API and auto-refresh).
+## Required sheet
 
-## Required sheet and columns
+`contracts_filtered`
 
-Sheet: `contracts_filtered`
+Expected fields:
+`contractKey, businessUnit, madeBy, contractType, referenceNumber, description, contractorName, poNumber, signingDate, commencementDate, expiryDate, extensionCount, extensionDates, baseValue, __source, signingDateObj, commencementDateObj, expiryDateObj, revisedExpiryDateObj, revisedExpiryWithVOObj`
 
-Columns expected:
-- contractKey
-- businessUnit
-- madeBy
-- contractType
-- referenceNumber
-- description
-- contractorName
-- poNumber
-- signingDate
-- commencementDate
-- expiryDate
-- extensionCount
-- extensionDates
-- baseValue
-- __source
-- signingDateObj
-- commencementDateObj
-- expiryDateObj
-- revisedExpiryDateObj
-- revisedExpiryWithVOObj
+Optional sheet:
+`variation_orders` with columns:
+`contractKey, voNumber, voDate, voDescription, voAmount, voStatus`
 
-Optional VO sheet: `variation_orders`
-- contractKey
-- voNumber
-- voDate
-- voDescription
-- voAmount
-- voStatus
+## Note
 
-## Important note about browser security
-
-Browser apps cannot silently open local files without your permission.
-So you select the workbook once using **Open Excel File**. After that, this app can automatically detect file changes and refresh while it remains open.
-
+Browser security requires one-time file selection permission. After selecting, app can auto-refresh and save changes to the same file.
