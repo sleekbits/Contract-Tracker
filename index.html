@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contract Tracker (Offline)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar glass">
+      <h1>📊 Contract Tracker</h1>
+      <button id="pickFileBtn">Open Excel File</button>
+      <button id="refreshBtn">Refresh</button>
+      <button id="saveWorkbookBtn">Save Changes to Excel</button>
+      <p id="fileLabel">No file selected</p>
+      <p id="statusLabel">Idle</p>
+      <hr>
+      <nav>
+        <button class="nav-btn active" data-page="dashboard">Dashboard</button>
+        <button class="nav-btn" data-page="register">All Contracts</button>
+        <button class="nav-btn" data-page="expiry">Expiry Tracker</button>
+        <button class="nav-btn" data-page="extension">Extension Tracker</button>
+        <button class="nav-btn" data-page="vo">Variation Orders</button>
+        <button class="nav-btn" data-page="reports">Reports</button>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <section id="dashboard" class="page active">
+        <h2>Dashboard</h2>
+        <div id="kpiCards" class="kpi-grid"></div>
+        <div class="chart-grid">
+          <div class="panel"><h3>By Business Unit</h3><div id="chartBu"></div></div>
+          <div class="panel"><h3>By Contract Type</h3><div id="chartType"></div></div>
+          <div class="panel"><h3>By Status</h3><div id="chartStatus"></div></div>
+          <div class="panel"><h3>Expiry Trend (Monthly)</h3><div id="chartExpiry"></div></div>
+        </div>
+        <div class="panel"><h3>Validation Warnings</h3><ul id="warnings"></ul></div>
+      </section>
+
+      <section id="register" class="page">
+        <h2>All Contracts Register</h2>
+        <div class="filters">
+          <input id="searchInput" placeholder="Search by Ref, Description, Contractor, PO, Contract Key" />
+          <select id="statusFilter"></select>
+          <select id="buFilter"></select>
+          <select id="typeFilter"></select>
+          <select id="extensionFilter">
+            <option value="all">Extension: All</option>
+            <option value="yes">With Extension</option>
+            <option value="no">Without Extension</option>
+          </select>
+          <select id="voFilter">
+            <option value="all">VO: All</option>
+            <option value="yes">With VO</option>
+            <option value="no">Without VO</option>
+          </select>
+          <button id="clearFiltersBtn">Reset</button>
+          <button id="addContractBtn" class="accent">+ Add Contract</button>
+        </div>
+        <div class="table-wrap"><table id="contractsTable"></table></div>
+      </section>
+
+      <section id="expiry" class="page">
+        <h2>Expiry Tracker</h2>
+        <div class="table-wrap"><table id="expiryTable"></table></div>
+      </section>
+
+      <section id="extension" class="page">
+        <h2>Extension Tracker</h2>
+        <div class="table-wrap"><table id="extensionTable"></table></div>
+      </section>
+
+      <section id="vo" class="page">
+        <h2>Variation Orders</h2>
+        <div class="panel"><h3>VO Summary by Contract</h3><div class="table-wrap"><table id="voSummaryTable"></table></div></div>
+        <div class="panel"><h3>VO Register</h3><div class="table-wrap"><table id="voTable"></table></div></div>
+      </section>
+
+      <section id="reports" class="page">
+        <h2>Reports / Export</h2>
+        <button id="exportCsvBtn">Export Current Filter to CSV</button>
+        <button id="printBtn">Print Current View</button>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="detailDialog"><article><h3>Contract Detail</h3><pre id="detailBody"></pre><button id="closeDialogBtn">Close</button></article></dialog>
+
+  <dialog id="editorDialog">
+    <article>
+      <h3 id="editorTitle">Contract Editor</h3>
+      <form id="editorForm" class="editor-grid">
+        <label>Contract Reference Number<input name="referenceNumber" required /></label>
+        <label>Business Unit<input name="businessUnit" /></label>
+        <label>Made By<input name="madeBy" /></label>
+        <label>Contract Type<input name="contractType" /></label>
+                <label>Description<input name="description" /></label>
+        <label>Contractor Name<input name="contractorName" /></label>
+        <label>PO Number<input name="poNumber" /></label>
+        <label>Signing Date<input name="signingDateObj" type="date" /></label>
+        <label>Commencement Date<input name="commencementDateObj" type="date" /></label>
+        <label>Expiry Date<input name="expiryDateObj" type="date" /></label>
+        <label>Revised Expiry<input name="revisedExpiryDateObj" type="date" /></label>
+        <label>Revised Expiry with VO<input name="revisedExpiryWithVOObj" type="date" /></label>
+        <label>Extension Count<input name="extensionCount" type="number" /></label>
+        <label>Extension Dates<input name="extensionDates" /></label>
+        <label>Base Value<input name="baseValue" type="number" step="0.01" /></label>
+      </form>
+      <div class="editor-actions">
+        <button id="saveContractBtn" class="accent">Save Contract</button>
+        <button id="deleteContractBtn" class="danger">Delete Contract</button>
+        <button id="cancelEditorBtn">Cancel</button>
+      </div>
+    </article>
+  </dialog>
+
+  <script src="xlsx-lite.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
