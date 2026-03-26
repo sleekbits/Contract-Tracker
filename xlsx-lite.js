@@ -72,21 +72,24 @@
 
   function xmlFromBytes(bytes) { return new DOMParser().parseFromString(textDecoder.decode(bytes), 'application/xml'); }
 
-  function parseSharedStrings(files) {
-    const entry = files.get('xl/sharedStrings.xml');
-    if (!entry) return [];
-    const doc = xmlFromBytes(entry);
-    return [...doc.getElementsByTagName('si')].map(si => [...si.getElementsByTagName('t')].map(t => t.textContent || '').join(''));
-  }
-
   function parseWorkbook(files) {
-    const wb = xmlFromBytes(files.get('xl/workbook.xml'));
-    const rels = xmlFromBytes(files.get('xl/_rels/workbook.xml.rels'));
+    const wbBytes = files.get('xl/workbook.xml');
+    const relBytes = files.get('xl/_rels/workbook.xml.rels');
+    if (!wbBytes || !relBytes) throw new Error('Workbook relationship files missing');
+    const wb = xmlFromBytes(wbBytes);
+    const rels = xmlFromBytes(relBytes);
     const relMap = new Map([...rels.getElementsByTagName('Relationship')].map(r => [r.getAttribute('Id'), r.getAttribute('Target')]));
     return [...wb.getElementsByTagName('sheet')].map(s => {
       const target = relMap.get(s.getAttribute('r:id'));
       return { name: s.getAttribute('name'), path: target.startsWith('xl/') ? target : `xl/${target.replace(/^\/?/, '')}` };
     });
+  }
+
+  function parseSharedStrings(files) {
+    const entry = files.get('xl/sharedStrings.xml');
+    if (!entry) return [];
+    const doc = xmlFromBytes(entry);
+    return [...doc.getElementsByTagName('si')].map(si => [...si.getElementsByTagName('t')].map(t => t.textContent || '').join(''));
   }
 
   function excelSerialToDate(serial) {
@@ -129,8 +132,12 @@
     const shared = parseSharedStrings(files);
     const sheets = parseWorkbook(files);
     const out = {};
-    for (const s of sheets) out[s.name] = parseSheet(files, s.path, shared);
-    return { sheets: out, excelSerialToDate };
+    const paths = {};
+    for (const s of sheets) {
+      out[s.name] = parseSheet(files, s.path, shared);
+      paths[s.name] = s.path;
+    }
+    return { sheets: out, excelSerialToDate, sheetPaths: paths };
   }
 
   function esc(s) {
@@ -156,72 +163,63 @@
       lines.push(`<row r="${ri + 1}">`);
       arr.forEach((v, ci) => {
         const ref = `${colName(ci)}${ri + 1}`;
-        if (v === null || v === undefined || v === '') {
-          lines.push(`<c r="${ref}" t="inlineStr"><is><t></t></is></c>`);
-        } else if (typeof v === 'number' && Number.isFinite(v)) {
-          lines.push(`<c r="${ref}"><v>${v}</v></c>`);
-        } else {
-          lines.push(`<c r="${ref}" t="inlineStr"><is><t>${esc(v)}</t></is></c>`);
-        }
+        if (v === null || v === undefined || v === '') lines.push(`<c r="${ref}" t="inlineStr"><is><t></t></is></c>`);
+        else if (typeof v === 'number' && Number.isFinite(v)) lines.push(`<c r="${ref}"><v>${v}</v></c>`);
+        else lines.push(`<c r="${ref}" t="inlineStr"><is><t>${esc(v)}</t></is></c>`);
       });
       lines.push('</row>');
     });
     lines.push('</sheetData></worksheet>');
-    return lines.join('');
+    return textEncoder.encode(lines.join(''));
   }
 
-  function zipStore(fileMap) {
+  function zipStoreFromMap(fileMap) {
     const parts = [];
     const cd = [];
     let offset = 0;
-    const names = Object.keys(fileMap);
 
-    names.forEach((name) => {
+    [...fileMap.entries()].forEach(([name, data]) => {
       const nameBytes = textEncoder.encode(name);
-      const data = typeof fileMap[name] === 'string' ? textEncoder.encode(fileMap[name]) : fileMap[name];
-      const crc = crc32(data);
+      const payload = data instanceof Uint8Array ? data : textEncoder.encode(String(data));
+      const crc = crc32(payload);
 
       const local = [];
       put32(local, 0x04034b50); put16(local, 20); put16(local, 0); put16(local, 0);
-      put16(local, 0); put16(local, 0); put32(local, crc); put32(local, data.length); put32(local, data.length);
-      put16(local, nameBytes.length); put16(local, 0);
-      local.push(...nameBytes);
-
-      parts.push(new Uint8Array(local), data);
+      put16(local, 0); put16(local, 0); put32(local, crc); put32(local, payload.length); put32(local, payload.length);
+      put16(local, nameBytes.length); put16(local, 0); local.push(...nameBytes);
+      parts.push(new Uint8Array(local), payload);
 
       const central = [];
       put32(central, 0x02014b50); put16(central, 20); put16(central, 20); put16(central, 0); put16(central, 0);
-      put16(central, 0); put16(central, 0); put32(central, crc); put32(central, data.length); put32(central, data.length);
+      put16(central, 0); put16(central, 0); put32(central, crc); put32(central, payload.length); put32(central, payload.length);
       put16(central, nameBytes.length); put16(central, 0); put16(central, 0); put16(central, 0); put16(central, 0); put32(central, 0);
       put32(central, offset); central.push(...nameBytes);
       cd.push(new Uint8Array(central));
-
-      offset += local.length + data.length;
+      offset += local.length + payload.length;
     });
 
     const cdStart = offset;
     let cdSize = 0;
-    cd.forEach(c => { parts.push(c); cdSize += c.length; offset += c.length; });
+    cd.forEach(c => { parts.push(c); cdSize += c.length; });
 
     const eocd = [];
-    put32(eocd, 0x06054b50); put16(eocd, 0); put16(eocd, 0); put16(eocd, names.length); put16(eocd, names.length);
+    put32(eocd, 0x06054b50); put16(eocd, 0); put16(eocd, 0);
+    put16(eocd, fileMap.size); put16(eocd, fileMap.size);
     put32(eocd, cdSize); put32(eocd, cdStart); put16(eocd, 0);
     parts.push(new Uint8Array(eocd));
-
     return new Blob(parts, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }
 
-  function buildWorkbookBlob({ contractsRows, voRows }) {
-    const files = {
-      '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`,
-      '_rels/.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
-      'xl/workbook.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="contracts_filtered" sheetId="1" r:id="rId1"/><sheet name="variation_orders" sheetId="2" r:id="rId2"/></sheets></workbook>`,
-      'xl/_rels/workbook.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/></Relationships>`,
-      'xl/worksheets/sheet1.xml': buildSheetXml(contractsRows),
-      'xl/worksheets/sheet2.xml': buildSheetXml(voRows),
-    };
-    return zipStore(files);
+  async function updateWorkbookBlob(file, { contractsRows, voRows }) {
+    const files = await unzip(await file.arrayBuffer());
+    const sheets = parseWorkbook(files);
+    const mapByName = new Map(sheets.map(s => [s.name, s.path]));
+
+    if (mapByName.has('contracts_filtered')) files.set(mapByName.get('contracts_filtered'), buildSheetXml(contractsRows));
+    if (mapByName.has('variation_orders')) files.set(mapByName.get('variation_orders'), buildSheetXml(voRows));
+
+    return zipStoreFromMap(files);
   }
 
-  global.XLSXLite = { readWorkbook, excelSerialToDate, buildWorkbookBlob };
+  global.XLSXLite = { readWorkbook, excelSerialToDate, updateWorkbookBlob };
 })(window);
